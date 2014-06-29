@@ -4,10 +4,11 @@
 #include <iostream>
 #include <math.h>
 #include "EdcCloudClient.h"
+#include "i2c-host.h"
 
 // >>>>>> Set these variables according to your Cloud user account
 
-
+#define I2C_DEV_NAME  		"/dev/i2c-1"
 #define TEST_CLIENT_ID		"wilsmagicclient"		// Unique Client ID of this client device
 #define TEST_ASSET_ID		"wilsmagicasset"		// Unique Asset ID of this client device
 
@@ -109,29 +110,35 @@ bool displayPayload (EdcPayload * payload)
 	return true;
 }
 
-EdcPayload * createPayload() {
+EdcPayload * createPayload(int i2cConnection, bmp085_calib_data * calibration) {
 	EdcPayload  * edcPayload = new EdcPayload();
 	EdcPayload_EdcMetric * metric;
+
+	enable_pressure(i2cConnection, calibration);
 
 	metric = edcPayload->add_metric();
 	metric->set_name("Temperature");
 	metric->set_type(EdcPayload_EdcMetric_ValueType_FLOAT);
-	metric->set_float_value(23.0); // TODO: GO AND GET THE REAL DATA
+	float tempValue = readTemprature(i2cConnection, calibration);
+	cout << "temp: " << tempValue << endl;
+	metric->set_float_value(tempValue);
+
+	enable_accel(i2cConnection);
 
 	metric = edcPayload->add_metric();
 	metric->set_name("X");
 	metric->set_type(EdcPayload_EdcMetric_ValueType_INT32);
-	metric->set_int_value(563); // TODO: GO AND GET THE REAL DATA
+	metric->set_int_value(readX(i2cConnection)); // TODO: GO AND GET THE REAL DATA
 
 	metric = edcPayload->add_metric();
 	metric->set_name("Y");
 	metric->set_type(EdcPayload_EdcMetric_ValueType_INT32);
-	metric->set_int_value(563); // TODO: GO AND GET THE REAL DATA
+	metric->set_int_value(readY(i2cConnection)); // TODO: GO AND GET THE REAL DATA
 
 	metric = edcPayload->add_metric();
 	metric->set_name("Z");
 	metric->set_type(EdcPayload_EdcMetric_ValueType_INT32);
-	metric->set_int_value(563); // TODO: GO AND GET THE REAL DATA
+	metric->set_int_value(readZ(i2cConnection)); // TODO: GO AND GET THE REAL DATA
 
 
 	// TODO: get actual GPS DATA
@@ -210,6 +217,11 @@ int main(int argc, char ** argv) {
 
 	//the client instance
 	EdcCloudClient edcCloudClient;
+	
+	// the i2c file
+	const char * devName = I2C_DEV_NAME;
+	int i2cConnection = connect_accel(devName);
+	bmp085_calib_data calibration;
 
 	int rc = EDCCLIENT_SUCCESS;
 	string pubTSemanticTopic = DATA_SEMANTIC_TOPIC;
@@ -282,7 +294,7 @@ int main(int argc, char ** argv) {
 
 	int qoss = 1;
 
-	EdcPayload * payload = createPayload();
+	EdcPayload * payload = createPayload(i2cConnection, &calibration);
 	rc = edcCloudClient.publish(pubTSemanticTopic, payload, qoss, false, PUBLISH_TIMEOUT);
 	
 	if (rc != EDCCLIENT_SUCCESS) {

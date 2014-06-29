@@ -5,20 +5,7 @@
 #include <stdint.h>
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
-
-typedef struct {
-	int16_t		ac1;
-	int16_t		ac2;
-	int16_t		ac3;
-	uint16_t	ac4;
-	uint16_t	ac5;
-	uint16_t	ac6;
-	int16_t		b1;
-	int16_t		b2;
-	int16_t		mb;
-	int16_t		mc;
-	int16_t		md;
-} bmp085_calib_data;
+#include "i2c-host.h"
 
 #define ACC_ADDRESS		(0x53)
 #define PRESS_ADDRESS		(0x77)
@@ -81,7 +68,7 @@ int32_t computeB5(int32_t ut, bmp085_calib_data * calibration) {
 	return X1 + X2;
 }
 
-float readTemp(int file, bmp085_calib_data * calibration) {
+float readTemprature(int file, bmp085_calib_data * calibration) {
 	write_two(file, 0xF4, 0x2E);
 	usleep(20);
 	int32_t result = (readRegister(file, 0xF6) << 8) | readRegister(file, 0xF6 + 1); 
@@ -140,7 +127,7 @@ void enable_accel(int file) {
 	write_two(file, POWER_CTRL_REG, 0x08);
 	
 }
-
+/*
 int main(int argc, char** argv) {
 
 	const char * devName = "/dev/i2c-1";
@@ -159,3 +146,4 @@ int main(int argc, char** argv) {
 
 	return 0;
 }
+*/
