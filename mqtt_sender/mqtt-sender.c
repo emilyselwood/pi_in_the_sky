@@ -120,7 +120,6 @@ EdcPayload * createPayload(int i2cConnection, bmp085_calib_data * calibration) {
 	metric->set_name("Temperature");
 	metric->set_type(EdcPayload_EdcMetric_ValueType_FLOAT);
 	float tempValue = readTemprature(i2cConnection, calibration);
-	cout << "temp: " << tempValue << endl;
 	metric->set_float_value(tempValue);
 
 	enable_accel(i2cConnection);
@@ -264,7 +263,7 @@ int main(int argc, char ** argv) {
 		{
 			// MQTT client errors (<0):
 			case MQTTCLIENT_FAILURE:
-				printf ("MQTT client, generic operation failure\n");
+				printf ("MQTT client, generic operation failure (Is the network connected?)\n");
 				break;
 			case MQTTCLIENT_PERSISTENCE_ERROR:
 				printf ("MQTT client, persistence error\n");
@@ -293,14 +292,19 @@ int main(int argc, char ** argv) {
 	}
 
 	int qoss = 1;
+	int done = 0;
+	while(!done) {
+		EdcPayload * payload = createPayload(i2cConnection, &calibration);
+		rc = edcCloudClient.publish(pubTSemanticTopic, payload, qoss, false, PUBLISH_TIMEOUT);
+		
+		if (rc != EDCCLIENT_SUCCESS) {
+			printf("Publish failed with error code %d\r\n", rc);
+			delete payload;
+			return shutdown(&edcCloudClient);
+		}
 
-	EdcPayload * payload = createPayload(i2cConnection, &calibration);
-	rc = edcCloudClient.publish(pubTSemanticTopic, payload, qoss, false, PUBLISH_TIMEOUT);
-	
-	if (rc != EDCCLIENT_SUCCESS) {
-		printf("Publish failed with error code %d\r\n", rc);
-		delete payload;
-		return shutdown(&edcCloudClient);
+		// wait a second before sending again.
+		sleep(1);
 	}
 
 	return shutdown(&edcCloudClient);
